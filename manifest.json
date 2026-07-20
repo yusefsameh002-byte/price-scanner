@@ -1,0 +1,27 @@
+{
+  "name": "ماسح الأسعار",
+  "short_name": "ماسح الأسعار",
+  "description": "امسح باركود المنتج وسجّل سعره، وارجعله وقت ما تحب",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d1210",
+  "theme_color": "#0d1210",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

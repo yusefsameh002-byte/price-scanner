@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ماسح الأسعار</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d1210">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#0d1210;
+    --panel:#141b18;
+    --panel2:#1a2320;
+    --line:#25332e;
+    --amber:#d4e04a;
+    --amber-dim:#7a8330;
+    --text:#eef2ea;
+    --muted:#8a988f;
+    --danger:#e0544a;
+    --mono: 'Courier New', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Segoe UI', Tahoma, Arial, sans-serif;
+    min-height:100vh;
+    padding:18px 14px 40px;
+  }
+  .wrap{max-width:480px; margin:0 auto;}
+
+  header{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{
+    width:34px;height:34px;border:2px solid var(--amber);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); color:var(--amber); font-weight:bold; font-size:13px;
+    border-radius:4px;
+  }
+  h1{font-size:17px; margin:0; letter-spacing:.3px;}
+  .sub{font-size:11px; color:var(--muted); margin-top:1px; font-family:var(--mono);}
+  .count-badge{
+    font-family:var(--mono); font-size:11px; color:var(--amber-dim);
+    border:1px solid var(--line); padding:4px 9px; border-radius:20px;
+  }
+
+  .scan-stage{position:relative; background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-bottom:14px;}
+  #interactive{width:100%; position:relative; min-height:230px; background:#000;}
+  #interactive video, #interactive canvas{width:100% !important; height:auto !important; display:block;}
+  .laser{
+    position:absolute; left:6%; right:6%; top:50%; height:2px; background:var(--amber);
+    box-shadow:0 0 8px 1px var(--amber); animation:sweep 1.8s ease-in-out infinite;
+    pointer-events:none; display:none;
+  }
+  .scan-stage.active .laser{display:block;}
+  @keyframes sweep{0%,100%{top:18%;} 50%{top:82%;}}
+  .frame-corners{position:absolute; inset:14%; border:none; pointer-events:none; display:none;}
+  .scan-stage.active .frame-corners{display:block;}
+  .frame-corners span{position:absolute; width:18px; height:18px; border-color:var(--amber); border-style:solid; border-width:0;}
+  .frame-corners span:nth-child(1){top:0;left:0;border-top-width:2px;border-right-width:2px;}
+  .frame-corners span:nth-child(2){top:0;right:0;border-top-width:2px;border-left-width:2px;}
+  .frame-corners span:nth-child(3){bottom:0;left:0;border-bottom-width:2px;border-right-width:2px;}
+  .frame-corners span:nth-child(4){bottom:0;right:0;border-bottom-width:2px;border-left-width:2px;}
+
+  .stage-placeholder{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:50px 20px; color:var(--muted); text-align:center; font-size:13px;}
+  .stage-placeholder .icon{font-size:34px; opacity:.6;}
+
+  .scan-controls{display:flex; gap:8px; padding:10px; border-top:1px solid var(--line);}
+  button{font-family:inherit; cursor:pointer; border:none; border-radius:9px; font-size:14px; font-weight:600; padding:12px 14px; transition:transform .1s ease, opacity .15s ease;}
+  button:active{transform:scale(.97);}
+  button:disabled{opacity:.5;}
+  .btn-primary{background:var(--amber); color:#101510; flex:1;}
+  .btn-danger{background:transparent; color:var(--danger); border:1px solid var(--danger); flex:1;}
+  .btn-ghost{background:transparent; color:var(--text); border:1px solid var(--line);}
+
+  .result-card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; display:none;}
+  .result-card.show{display:block; animation:pop .2s ease;}
+  @keyframes pop{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:translateY(0);}}
+  .result-barcode{font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:1px; margin-bottom:8px;}
+  .result-price{font-size:32px; font-weight:800; color:var(--amber); font-family:var(--mono);}
+  .result-price small{font-size:15px; color:var(--muted); font-weight:600;}
+  .result-name{font-size:13px; color:var(--muted); margin-top:2px;}
+  .result-status{font-size:12px; font-weight:700; padding:3px 10px; border-radius:20px; display:inline-block; margin-bottom:10px;}
+  .status-found{background:rgba(212,224,74,.12); color:var(--amber);}
+  .status-new{background:rgba(224,84,74,.12); color:var(--danger);}
+
+  .entry-form{display:none; margin-top:12px; gap:8px; flex-direction:column;}
+  .entry-form.show{display:flex;}
+  label{font-size:12px; color:var(--muted); margin-bottom:-4px;}
+  input{background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:11px 12px; border-radius:9px; font-size:15px; font-family:inherit;}
+  input:focus{outline:none; border-color:var(--amber);}
+  .form-row{display:flex; gap:8px;}
+
+  .section-title{font-size:12px; color:var(--muted); font-family:var(--mono); margin:22px 0 8px; display:flex; justify-content:space-between; align-items:center;}
+  .product-list{display:flex; flex-direction:column; gap:8px;}
+  .product-item{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:11px 13px; display:flex; justify-content:space-between; align-items:center;}
+  .pi-left .pi-code{font-family:var(--mono); font-size:11px; color:var(--muted);}
+  .pi-left .pi-name{font-size:14px; margin-top:2px;}
+  .pi-price{font-family:var(--mono); font-weight:700; color:var(--amber); font-size:15px; white-space:nowrap;}
+  .empty-note{color:var(--muted); font-size:13px; text-align:center; padding:22px 10px;}
+
+  .install-banner{
+    display:none; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--panel2); border:1px solid var(--amber-dim); border-radius:10px;
+    padding:10px 12px; margin-bottom:14px; font-size:12.5px;
+  }
+  .install-banner.show{display:flex;}
+  .install-banner button{padding:8px 12px; font-size:12.5px;}
+
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--amber); color:#101510; padding:10px 18px; border-radius:20px;
+    font-size:13px; font-weight:700; opacity:0; pointer-events:none; transition:opacity .25s ease, bottom .25s ease;
+    z-index:50;
+  }
+  .toast.show{opacity:1; bottom:30px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">▮▯▮</div>
+      <div>
+        <h1>ماسح الأسعار</h1>
+        <div class="sub">اسكان &amp; تسعير سريع</div>
+      </div>
+    </div>
+    <div class="count-badge" id="countBadge">0 منتج</div>
+  </header>
+
+  <div class="install-banner" id="installBanner">
+    <span>ثبّت التطبيق على شاشتك الرئيسية للاستخدام بسرعة</span>
+    <button class="btn-primary" id="installBtn">تثبيت</button>
+  </div>
+
+  <div class="scan-stage" id="stage">
+    <div id="interactive">
+      <div class="stage-placeholder" id="placeholder">
+        <div class="icon">▤</div>
+        <div>اضغط "شغّل الكاميرا" وسدّد على الباركود</div>
+      </div>
+      <div class="laser"></div>
+      <div class="frame-corners"><span></span><span></span><span></span><span></span></div>
+    </div>
+    <div class="scan-controls">
+      <button class="btn-primary" id="toggleScanBtn">شغّل الكاميرا</button>
+      <button class="btn-ghost" id="manualBtn">إدخال يدوي</button>
+    </div>
+  </div>
+
+  <div class="result-card" id="resultCard">
+    <span class="result-status" id="resultStatus"></span>
+    <div class="result-barcode" id="resultBarcode"></div>
+    <div id="resultKnown">
+      <div class="result-price" id="resultPrice"></div>
+      <div class="result-name" id="resultName"></div>
+      <div class="scan-controls" style="padding:14px 0 0; border:none;">
+        <button class="btn-ghost" id="editBtn">تعديل السعر</button>
+        <button class="btn-danger" id="deleteBtn">حذف</button>
+      </div>
+    </div>
+    <div class="entry-form" id="entryForm">
+      <label>اسم المنتج (اختياري)</label>
+      <input type="text" id="nameInput" placeholder="مثلاً: شيبسي 40 جرام">
+      <label>السعر</label>
+      <input type="number" inputmode="decimal" id="priceInput" placeholder="0.00">
+      <div class="form-row">
+        <button class="btn-primary" id="saveBtn" style="flex:1">حفظ</button>
+        <button class="btn-ghost" id="cancelBtn">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <span>المنتجات المسجّلة</span>
+    <span id="listCount"></span>
+  </div>
+  <div class="product-list" id="productList">
+    <div class="empty-note">مفيش منتجات متسجلة لسه — امسح أول باركود</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'barcodePriceProducts_v1';
+
+const stage = document.getElementById('stage');
+const placeholder = document.getElementById('placeholder');
+const toggleScanBtn = document.getElementById('toggleScanBtn');
+const manualBtn = document.getElementById('manualBtn');
+const resultCard = document.getElementById('resultCard');
+const resultStatus = document.getElementById('resultStatus');
+const resultBarcode = document.getElementById('resultBarcode');
+const resultKnown = document.getElementById('resultKnown');
+const resultPrice = document.getElementById('resultPrice');
+const resultName = document.getElementById('resultName');
+const entryForm = document.getElementById('entryForm');
+const nameInput = document.getElementById('nameInput');
+const priceInput = document.getElementById('priceInput');
+const saveBtn = document.getElementById('saveBtn');
+const cancelBtn = document.getElementById('cancelBtn');
+const editBtn = document.getElementById('editBtn');
+const deleteBtn = document.getElementById('deleteBtn');
+const productList = document.getElementById('productList');
+const countBadge = document.getElementById('countBadge');
+const listCount = document.getElementById('listCount');
+const toast = document.getElementById('toast');
+const installBanner = document.getElementById('installBanner');
+const installBtn = document.getElementById('installBtn');
+
+let scanning = false;
+let currentBarcode = null;
+let cache = {};
+let lastDetectTime = 0;
+let quaggaState = 'idle'; // idle | loading | ready | failed
+
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 1600);
+}
+
+function fmtPrice(p){
+  const n = Number(p);
+  return (Number.isInteger(n) ? n.toString() : n.toFixed(2));
+}
+
+function loadAll(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    cache = raw ? JSON.parse(raw) : {};
+  }catch(e){
+    cache = {};
+  }
+  renderList();
+}
+
+function persist(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function renderList(){
+  const items = Object.values(cache).sort((a,b)=> (b.ts||0)-(a.ts||0));
+  countBadge.textContent = items.length + ' منتج';
+  if(items.length === 0){
+    productList.innerHTML = '<div class="empty-note">مفيش منتجات متسجلة لسه — امسح أول باركود</div>';
+    return;
+  }
+  productList.innerHTML = '';
+  for(const item of items){
+    const div = document.createElement('div');
+    div.className = 'product-item';
+    div.innerHTML = `
+      <div class="pi-left">
+        <div class="pi-name">${item.name ? escapeHtml(item.name) : 'بدون اسم'}</div>
+        <div class="pi-code">${escapeHtml(item.barcode)}</div>
+      </div>
+      <div class="pi-price">${fmtPrice(item.price)}</div>
+    `;
+    div.addEventListener('click', ()=> showResult(item.barcode));
+    productList.appendChild(div);
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showResult(barcode){
+  currentBarcode = barcode;
+  resultCard.classList.add('show');
+  resultBarcode.textContent = barcode;
+  const item = cache[barcode];
+  if(item){
+    resultStatus.textContent = 'موجود';
+    resultStatus.className = 'result-status status-found';
+    resultKnown.style.display = 'block';
+    entryForm.classList.remove('show');
+    resultPrice.innerHTML = fmtPrice(item.price) + ' <small>جنيه</small>';
+    resultName.textContent = item.name || '';
+  }else{
+    resultStatus.textContent = 'منتج جديد — سجّل السعر';
+    resultStatus.className = 'result-status status-new';
+    resultKnown.style.display = 'none';
+    entryForm.classList.add('show');
+    nameInput.value = '';
+    priceInput.value = '';
+    setTimeout(()=>priceInput.focus(), 150);
+  }
+}
+
+editBtn.addEventListener('click', ()=>{
+  const item = cache[currentBarcode];
+  resultKnown.style.display = 'none';
+  entryForm.classList.add('show');
+  nameInput.value = item.name || '';
+  priceInput.value = item.price;
+  priceInput.focus();
+});
+
+cancelBtn.addEventListener('click', ()=>{
+  if(cache[currentBarcode]){
+    showResult(currentBarcode);
+  }else{
+    resultCard.classList.remove('show');
+    currentBarcode = null;
+  }
+});
+
+saveBtn.addEventListener('click', ()=>{
+  const price = parseFloat(priceInput.value);
+  if(!currentBarcode || isNaN(price)){
+    showToast('اكتب السعر الأول');
+    priceInput.focus();
+    return;
+  }
+  const data = { barcode: currentBarcode, name: nameInput.value.trim(), price: price, ts: Date.now() };
+  cache[currentBarcode] = data;
+  if(persist()){
+    renderList();
+    showResult(currentBarcode);
+    showToast('اتحفظ ✓');
+  }else{
+    showToast('حصل خطأ في الحفظ، جرب تاني');
+  }
+});
+
+deleteBtn.addEventListener('click', ()=>{
+  if(!currentBarcode) return;
+  delete cache[currentBarcode];
+  persist();
+  renderList();
+  resultCard.classList.remove('show');
+  currentBarcode = null;
+  showToast('اتمسح');
+});
+
+manualBtn.addEventListener('click', ()=>{
+  const code = prompt('اكتب رقم الباركود يدويًا:');
+  if(code && code.trim()){
+    showResult(code.trim());
+  }
+});
+
+toggleScanBtn.addEventListener('click', ()=>{
+  if(scanning){ stopScanner(); } else { startScanner(); }
+});
+
+function loadQuaggaScript(onDone){
+  if(quaggaState === 'ready'){ onDone(true); return; }
+  if(quaggaState === 'loading'){ return; }
+  quaggaState = 'loading';
+  const s = document.createElement('script');
+  s.src = "https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js";
+  s.onload = ()=>{ quaggaState = 'ready'; onDone(true); };
+  s.onerror = ()=>{ quaggaState = 'failed'; onDone(false); };
+  document.body.appendChild(s);
+}
+
+function startScanner(){
+  if(quaggaState !== 'ready'){
+    toggleScanBtn.textContent = 'بيحمّل المكتبة...';
+    toggleScanBtn.disabled = true;
+    loadQuaggaScript(function(success){
+      toggleScanBtn.disabled = false;
+      toggleScanBtn.textContent = 'شغّل الكاميرا';
+      if(success){ startScanner(); }
+      else{ showToast('تعذر تحميل مكتبة المسح — تأكد من الإنترنت، أو استخدم إدخال يدوي'); }
+    });
+    return;
+  }
+  placeholder.style.display = 'none';
+  Quagga.init({
+    inputStream: {
+      name: "Live",
+      type: "LiveStream",
+      target: document.querySelector('#interactive'),
+      constraints: { facingMode: "environment", width: { min: 640 }, height: { min: 480 } }
+    },
+    locator: { patchSize: "medium", halfSample: true },
+    numOfWorkers: 2,
+    frequency: 10,
+    decoder: { readers: ["ean_reader","ean_8_reader","upc_reader","upc_e_reader","code_128_reader","code_39_reader"] },
+    locate: true
+  }, function(err){
+    if(err){
+      console.error(err);
+      showToast('مش قادر أفتح الكاميرا — تأكد من إذن الوصول');
+      placeholder.style.display = 'flex';
+      return;
+    }
+    Quagga.start();
+    scanning = true;
+    stage.classList.add('active');
+    toggleScanBtn.textContent = 'إيقاف الكاميرا';
+  });
+  Quagga.onDetected(onBarcodeDetected);
+}
+
+function onBarcodeDetected(result){
+  const code = result.codeResult && result.codeResult.code;
+  if(!code) return;
+  const now = Date.now();
+  if(now - lastDetectTime < 1200) return;
+  lastDetectTime = now;
+  if(navigator.vibrate) navigator.vibrate(80);
+  showResult(code);
+}
+
+function stopScanner(){
+  if(typeof Quagga !== 'undefined'){
+    try{ Quagga.offDetected(onBarcodeDetected); }catch(e){}
+    try{ Quagga.stop(); }catch(e){}
+  }
+  scanning = false;
+  stage.classList.remove('active');
+  toggleScanBtn.textContent = 'شغّل الكاميرا';
+  placeholder.style.display = 'flex';
+}
+
+// PWA install prompt
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  installBanner.classList.add('show');
+});
+installBtn.addEventListener('click', async ()=>{
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  installBanner.classList.remove('show');
+});
+window.addEventListener('appinstalled', ()=>{
+  installBanner.classList.remove('show');
+});
+
+// Register service worker for offline support
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+loadAll();
+</script>
+</body>
+</html>
