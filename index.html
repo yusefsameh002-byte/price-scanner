@@ -232,6 +232,16 @@ function fmtPrice(p){
   return (Number.isInteger(n) ? n.toString() : n.toFixed(2));
 }
 
+function normalizeBarcode(code){
+  code = String(code).trim();
+  // A UPC-A barcode (12 digits) is the same physical barcode as an
+  // EAN-13 code with a leading zero. Depending on which reader catches
+  // it, Quagg might return either form on different scans of the same
+  // item. Normalize to the 13-digit form so both always match.
+  if(/^\d{12}$/.test(code)) return '0' + code;
+  return code;
+}
+
 function loadAll(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -279,6 +289,7 @@ function escapeHtml(s){
 }
 
 function showResult(barcode){
+  barcode = normalizeBarcode(barcode);
   currentBarcode = barcode;
   resultCard.classList.add('show');
   resultBarcode.textContent = barcode;
@@ -387,13 +398,14 @@ function startScanner(){
       name: "Live",
       type: "LiveStream",
       target: document.querySelector('#interactive'),
-      constraints: { facingMode: "environment", width: { min: 640 }, height: { min: 480 } }
+      constraints: { facingMode: "environment", width: { min: 480, ideal: 640, max: 800 }, height: { min: 320, ideal: 480, max: 600 } }
     },
     locator: { patchSize: "medium", halfSample: true },
-    numOfWorkers: 2,
+    numOfWorkers: navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 4,
     frequency: 10,
-    decoder: { readers: ["ean_reader","ean_8_reader","upc_reader","upc_e_reader","code_128_reader","code_39_reader"] },
-    locate: true
+    decoder: { readers: ["ean_reader","code_128_reader","upc_reader"] },
+    locate: true,
+    area: { top: "20%", right: "8%", left: "8%", bottom: "20%" }
   }, function(err){
     if(err){
       console.error(err);
@@ -459,3 +471,4 @@ loadAll();
 </script>
 </body>
 </html>
+
