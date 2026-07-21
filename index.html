@@ -50,8 +50,8 @@
   }
 
   .scan-stage{position:relative; background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-bottom:14px;}
-  #interactive{width:100%; position:relative; min-height:230px; background:#000;}
-  #interactive video, #interactive canvas{width:100% !important; height:auto !important; display:block;}
+  #interactive{width:100%; position:relative; height:200px; background:#000; overflow:hidden;}
+  #interactive video, #interactive canvas{width:100% !important; height:100% !important; object-fit:cover; display:block;}
   .laser{
     position:absolute; left:6%; right:6%; top:50%; height:2px; background:var(--amber);
     box-shadow:0 0 8px 1px var(--amber); animation:sweep 1.8s ease-in-out infinite;
@@ -312,6 +312,7 @@ function showResult(barcode){
     priceInput.value = '';
     setTimeout(()=>priceInput.focus(), 150);
   }
+  setTimeout(()=>{ resultCard.scrollIntoView({behavior:'smooth', block:'start'}); }, 50);
 }
 
 editBtn.addEventListener('click', ()=>{
@@ -383,6 +384,8 @@ function loadQuaggaScript(onDone){
 }
 
 function startScanner(){
+  pendingCode = null;
+  pendingCount = 0;
   if(quaggaState !== 'ready'){
     toggleScanBtn.textContent = 'بيحمّل المكتبة...';
     toggleScanBtn.disabled = true;
@@ -404,7 +407,7 @@ function startScanner(){
     },
     locator: { patchSize: "large", halfSample: true },
     numOfWorkers: 2,
-    frequency: 6,
+    frequency: 8,
     decoder: { readers: ["ean_reader","upc_reader","code_128_reader"] },
     locate: true,
     area: { top: "25%", right: "10%", left: "10%", bottom: "25%" }
@@ -423,14 +426,28 @@ function startScanner(){
   Quagga.onDetected(onBarcodeDetected);
 }
 
+let pendingCode = null;
+let pendingCount = 0;
+
 function onBarcodeDetected(result){
   const code = result.codeResult && result.codeResult.code;
   if(!code) return;
+  const norm = normalizeBarcode(code);
+  if(norm === pendingCode){
+    pendingCount++;
+  }else{
+    pendingCode = norm;
+    pendingCount = 1;
+  }
+  if(pendingCount < 2) return; // need the same code twice in a row before trusting it
   const now = Date.now();
   if(now - lastDetectTime < 1200) return;
   lastDetectTime = now;
+  pendingCode = null;
+  pendingCount = 0;
   if(navigator.vibrate) navigator.vibrate(80);
   showResult(code);
+  stopScanner();
 }
 
 function stopScanner(){
