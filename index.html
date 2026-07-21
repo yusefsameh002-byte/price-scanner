@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -398,14 +400,14 @@ function startScanner(){
       name: "Live",
       type: "LiveStream",
       target: document.querySelector('#interactive'),
-      constraints: { facingMode: "environment", width: { min: 480, ideal: 640, max: 800 }, height: { min: 320, ideal: 480, max: 600 } }
+      constraints: { facingMode: "environment", width: { min: 320, ideal: 480, max: 640 }, height: { min: 240, ideal: 320, max: 480 } }
     },
-    locator: { patchSize: "medium", halfSample: true },
-    numOfWorkers: navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 4,
-    frequency: 10,
-    decoder: { readers: ["ean_reader","code_128_reader","upc_reader"] },
+    locator: { patchSize: "large", halfSample: true },
+    numOfWorkers: 2,
+    frequency: 6,
+    decoder: { readers: ["ean_reader","upc_reader","code_128_reader"] },
     locate: true,
-    area: { top: "20%", right: "8%", left: "8%", bottom: "20%" }
+    area: { top: "25%", right: "10%", left: "10%", bottom: "25%" }
   }, function(err){
     if(err){
       console.error(err);
